@@ -506,6 +506,10 @@ def transform(response_text, session_id, model, platform, **kwargs):
             "cum_by_tool": (timing or {}).get("cum_by_tool")
                           or (prev or {}).get("cum_by_tool") or {},
         })
+        if not _setting("show_footer", True):
+            # 靜默模式：快照照常累計（時間分配的累計數據不斷鏈），只是不渲染、
+            # 不附加。與 enabled=false 的差別：那是整個停用，連快照都停止更新。
+            return None
         block = impl.format_block(
             delta,
             totals,

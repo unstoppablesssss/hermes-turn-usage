@@ -12,6 +12,16 @@ config_schema:
     label: Enable（啟用）
     description: Turn the footer off without uninstalling. 關掉就等於停用，不必卸載。
     default: true
+  show_footer:
+    type: bool
+    label: Show the footer（顯示頁腳）
+    description: >-
+      Silent mode. `false` keeps the plugin loaded and its per-session snapshot
+      updating (cumulative time accounting stays intact), but nothing is
+      appended to replies. Use `enabled: false` instead to disable entirely.
+      靜默模式：設 false 時外掛保持載入、每輪快照照常累計（時間統計不斷鏈），
+      只是回覆末尾不附加頁腳；要整個停用請改用 enabled=false。
+    default: true
   language:
     type: str
     label: Footer language（頁腳語言）

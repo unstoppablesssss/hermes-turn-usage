@@ -85,6 +85,66 @@ class TestEnabledGate(unittest.TestCase):
             plugin.load_totals = original
         self.assertEqual(called, [])  # 關掉就不查 DB
 
+    def _silent_mocks(self, rendered, snapped):
+        """兩個 show_footer 測試共用的 mock 組：完全離線、不碰真 DB/log。"""
+        class FakeImpl:
+            def set_language(self, lang): pass
+            def diff_totals(self, totals, prev): return {}
+            def strip_previous_block(self, text): return text
+            def route_text(self, providers, ups): return ""
+            def format_block(self, *a, **k):
+                rendered.append(1)
+                return "BLOCK"
+
+        totals = {"calls": 1, "in": 1, "out": 1, "cache": 0, "cost": 0.0,
+                  "cost_est": 0.0, "reasoning": 0, "model": "m",
+                  "providers": [], "prices": (0.14, 0.0042, 0.42)}
+        names = ("load_totals", "read_snapshot", "turn_timing", "write_snapshot",
+                 "_impl", "recent_upstreams", "current_prompt_tokens",
+                 "context_max_tokens", "prompt_composition")
+        originals = tuple(getattr(plugin, n) for n in names)
+        plugin.load_totals = lambda sid, prices=None: dict(totals)
+        plugin.read_snapshot = lambda sid: None
+        plugin.turn_timing = lambda sid, since_ts=None: None
+        plugin.write_snapshot = lambda sid, totals, extra=None: snapped.append(sid)
+        plugin._impl = lambda: FakeImpl()
+        plugin.recent_upstreams = lambda sid: []
+        plugin.current_prompt_tokens = lambda sid: None
+        plugin.context_max_tokens = lambda: None
+        plugin.prompt_composition = lambda sid, since_ts=None: None
+        return names, originals
+
+    @staticmethod
+    def _restore_mocks(names, originals):
+        for name, fn in zip(names, originals):
+            setattr(plugin, name, fn)
+
+    def test_show_footer_false_snapshot_kept_render_skipped(self):
+        """show_footer=false（靜默模式）：快照照寫（累計不斷鏈），但不渲染、不附加。"""
+        plugin._CTX = FakeCtx({"show_footer": False})
+        rendered, snapped = [], []
+        names, originals = self._silent_mocks(rendered, snapped)
+        try:
+            self.assertIsNone(plugin.transform("hello", "sess", "m", "cli"))
+        finally:
+            self._restore_mocks(names, originals)
+            plugin._CTX = None
+        self.assertEqual(snapped, ["sess"])  # 快照照寫
+        self.assertEqual(rendered, [])       # 完全沒渲染
+
+    def test_show_footer_default_true_still_appends(self):
+        """未設定 show_footer（預設 true）：行為不變，頁腳照常附加。"""
+        plugin._CTX = FakeCtx({})
+        rendered, snapped = [], []
+        names, originals = self._silent_mocks(rendered, snapped)
+        try:
+            result = plugin.transform("hello", "sess", "m", "cli")
+        finally:
+            self._restore_mocks(names, originals)
+            plugin._CTX = None
+        self.assertEqual(result, "hello\n\nBLOCK")
+        self.assertEqual(len(rendered), 1)
+
     def test_price_settings_reach_load_totals(self):
         plugin._CTX = FakeCtx({"price_in": 1.0, "price_cache": 0.1, "price_out": 10.0})
         seen = {}

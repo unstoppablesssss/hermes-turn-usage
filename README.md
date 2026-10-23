@@ -82,6 +82,7 @@ Everything is in the plugin's `config_schema` (`plugin.yaml`); Hermes reads the 
 | Key | Default | Meaning |
 |---|---|---|
 | `enabled` | `true` | master switch — `false` disables the footer without uninstalling |
+| `show_footer` | `true` | silent mode — `false` keeps the plugin loaded and its per-session snapshot updating (time accounting stays intact) but appends nothing to replies; `enabled: false` disables everything |
 | `language` | `"en"` | footer language: `en` (default) or `zh` (Traditional Chinese) |
 | `show_session_total` | `true` | add the cumulative column |
 | `show_time_table` | `true` | the time-breakdown table |
